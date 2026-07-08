@@ -1,0 +1,117 @@
+Ce qui est bien :
+✅ Cherche plus d'endroits :
+
+ReplicatedStorage
+Workspace
+PlayerGui
+Character
+Backpack
+
+✅ Trouve :
+
+RemoteEvent
+RemoteFunction
+
+✅ Interface beaucoup plus propre :
+
+barre de recherche
+liste scrollable
+export texte
+export JSON
+
+✅ Structure du code plus propre que les anciens.
+
+Mais il y a des choses à améliorer :
+
+1) Il est trop long et contient un doublon
+
+À partir de :
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+il recommence un deuxième scanner complet.
+
+Donc ton script fait :
+
+Scanner v2 ✅
+puis re-scanner ancien ❌
+
+Ça peut créer :
+
+2 interfaces
+variables écrasées
+bugs
+
+➡️ Supprime toute la deuxième partie après le premier :
+
+print("[SCANNER] ================================================================")
+print("[SCANNER] ✨ Tool loaded successfully!")
+2) Ajouter getdescendants()
+
+Actuellement il descend seulement dans :
+
+Folder
+Model
+
+Mais certains jeux mettent des Remote dans d'autres objets.
+
+Plus simple :
+
+for _, child in pairs(parent:GetDescendants()) do
+
+Ça trouve plus de choses.
+
+3) Ajouter les événements qui apparaissent après le chargement
+
+Certains jeux créent des RemoteEvents après quelques secondes.
+
+Tu pourrais ajouter :
+
+bouton "Live Scan"
+surveillance avec ChildAdded
+
+Exemple :
+
+ReplicatedStorage.ChildAdded:Connect(function(obj)
+    if obj:IsA("RemoteEvent") then
+        print("Nouveau Remote:", obj.Name)
+    end
+end)
+4) Ajouter une catégorie
+
+Au lieu d'une seule liste :
+
+📤 RemoteEvents
+   - Shop
+   - Trade
+   - Inventory
+
+📞 RemoteFunctions
+   - GetData
+   - LoadPlayer
+
+Plus facile à lire.
+
+5) Ajouter le chemin complet Roblox
+
+Au lieu de :
+
+Folder/Event
+
+Afficher :
+
+game.ReplicatedStorage.Modules.Trade.SendTrade
+
+C'est plus utile pour un développeur.
+
+6) Corriger le bouton Rescan
+
+Cette ligne :
+
+loadstring(script.Source)()
+
+peut ne pas marcher dans beaucoup de contextes.
+
+Meilleur :
+faire une fonction startScanner() et la rappeler.
