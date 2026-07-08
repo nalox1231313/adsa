@@ -1,117 +1,662 @@
-Ce qui est bien :
-✅ Cherche plus d'endroits :
+-- 🔍 ADVANCED COMMUNICATION SCANNER - Tool for Roblox Developers
+-- Gros a Garden - Deep game structure analysis
 
-ReplicatedStorage
-Workspace
-PlayerGui
-Character
-Backpack
+print("[SCANNER] ================================================================")
+print("[SCANNER] Advanced Communication Scanner v2.0")
+print("[SCANNER]")
+print("[SCANNER] Scans ALL accessible RemoteEvents & RemoteFunctions")
+print("[SCANNER] Searches: ReplicatedStorage, PlayerGui, Workspace, Character, etc")
+print("[SCANNER]")
+print("[SCANNER] SECURITY NOTE:")
+print("[SCANNER] • Server validates EVERY call - knowing names isn't enough")
+print("[SCANNER] • This is a DEVELOPMENT TOOL ONLY")
+print("[SCANNER] • NOT for automating external games or bypassing security")
+print("[SCANNER] ================================================================\n")
 
-✅ Trouve :
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
-RemoteEvent
-RemoteFunction
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-✅ Interface beaucoup plus propre :
+-- === DATA STRUCTURES ===
+local allRemotes = {
+    events = {},
+    functions = {},
+    byFolder = {}
+}
+local scanStartTime = tick()
 
-barre de recherche
-liste scrollable
-export texte
-export JSON
+local function scanForCommunication(parent, prefix, parentName)
+    prefix = prefix or ""
+    parentName = parentName or "Root"
+    
+    for _, child in pairs(parent:GetChildren()) do
+        if child:IsA("RemoteEvent") then
+            table.insert(allRemotes.events, {
+                name = child.Name,
+                path = prefix .. child.Name,
+                parent = parentName,
+                type = "RemoteEvent"
+            })
+            print("[SCANNER] 📤 RemoteEvent: " .. prefix .. child.Name)
+        elseif child:IsA("RemoteFunction") then
+            table.insert(allRemotes.functions, {
+                name = child.Name,
+                path = prefix .. child.Name,
+                parent = parentName,
+                type = "RemoteFunction"
+            })
+            print("[SCANNER] 📞 RemoteFunction: " .. prefix .. child.Name)
+        end
+        
+        if child:IsA("Folder") then
+            scanForCommunication(child, prefix .. child.Name .. "/", child.Name)
+        elseif child:IsA("Model") then
+            scanForCommunication(child, prefix .. child.Name .. "/", child.Name)
+        end
+    end
+end
 
-✅ Structure du code plus propre que les anciens.
+print("[SCANNER] 🔍 Scanning in progress...\n")
 
-Mais il y a des choses à améliorer :
+print("[SCANNER] === ReplicatedStorage (Primary) ===")
+scanForCommunication(ReplicatedStorage, "", "ReplicatedStorage")
 
-1) Il est trop long et contient un doublon
+print("\n[SCANNER] === Workspace (3D Objects) ===")
+pcall(function()
+    scanForCommunication(game.Workspace, "Workspace/", "Workspace")
+end)
 
-À partir de :
+print("\n[SCANNER] === PlayerGui (UI) ===")
+pcall(function()
+    scanForCommunication(playerGui, "PlayerGui/", "PlayerGui")
+end)
+
+print("\n[SCANNER] === Character (Player Object) ===")
+pcall(function()
+    if player.Character then
+        scanForCommunication(player.Character, "Character/", "Character")
+    end
+end)
+
+print("\n[SCANNER] === Backpack (Inventory) ===")
+pcall(function()
+    if player:FindFirstChild("Backpack") then
+        scanForCommunication(player.Backpack, "Backpack/", "Backpack")
+    end
+end)
+
+local scanEndTime = tick()
+local scanTime = string.format("%.3f", scanEndTime - scanStartTime)
+local totalFound = #allRemotes.events + #allRemotes.functions
+
+print("\n[SCANNER] ================================================================")
+print("[SCANNER] ✅ Scan completed in " .. scanTime .. "s")
+print("[SCANNER] 📤 RemoteEvents: " .. #allRemotes.events)
+print("[SCANNER] 📞 RemoteFunctions: " .. #allRemotes.functions)
+print("[SCANNER] ✨ Total: " .. totalFound)
+print("[SCANNER] ================================================================\n")
+
+-- === ADVANCED UI WITH SCROLLING ===
+local gui = Instance.new("ScreenGui")
+gui.Name = "ScannerScreenV2"
+gui.ResetOnSpawn = false
+gui.ZIndex = 9999
+gui.Parent = playerGui
+
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(0.75, 0, 0.85, 0)
+bg.Position = UDim2.new(0.125, 0, 0.075, 0)
+bg.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+bg.BorderSizePixel = 2
+bg.BorderColor3 = Color3.fromRGB(100, 150, 255)
+bg.Parent = gui
+
+-- === TITLE ===
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 50)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(40, 70, 140)
+titleLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "🔍 Communication Scanner | " .. #allRemotes.events .. " Events | " .. #allRemotes.functions .. " Functions"
+titleLabel.TextWrapped = true
+titleLabel.Parent = bg
+
+-- === SEARCH BAR ===
+local searchFrame = Instance.new("Frame")
+searchFrame.Size = UDim2.new(1, -4, 0, 35)
+searchFrame.Position = UDim2.new(0, 2, 0, 52)
+searchFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+searchFrame.BorderSizePixel = 1
+searchFrame.BorderColor3 = Color3.fromRGB(80, 120, 200)
+searchFrame.Parent = bg
+
+local searchLabel = Instance.new("TextLabel")
+searchLabel.Size = UDim2.new(0, 60, 1, 0)
+searchLabel.Position = UDim2.new(0, 5, 0, 0)
+searchLabel.BackgroundTransparency = 1
+searchLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+searchLabel.TextSize = 12
+searchLabel.Font = Enum.Font.GothamBold
+searchLabel.Text = "🔎 Search:"
+searchLabel.Parent = searchFrame
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -70, 1, -6)
+searchBox.Position = UDim2.new(0, 65, 0, 3)
+searchBox.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+searchBox.BorderSizePixel = 1
+searchBox.BorderColor3 = Color3.fromRGB(100, 150, 255)
+searchBox.TextColor3 = Color3.fromRGB(200, 200, 255)
+searchBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 150)
+searchBox.PlaceholderText = "Filter by name (trade, mail, etc)..."
+searchBox.TextSize = 11
+searchBox.Font = Enum.Font.Courier
+searchBox.Parent = searchFrame
+
+-- === SCROLLING LIST ===
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -4, 1, -135)
+scrollFrame.Position = UDim2.new(0, 2, 0, 90)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+scrollFrame.BorderSizePixel = 1
+scrollFrame.BorderColor3 = Color3.fromRGB(80, 120, 200)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ScrollBarThickness = 12
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 255)
+scrollFrame.Parent = bg
+
+-- === RENDER CONTENT ===
+local function renderContent(filter)
+    -- Clear
+    for _, child in pairs(scrollFrame:GetChildren()) do
+        child:Destroy()
+    end
+    
+    local yPos = 0
+    local itemHeight = 50
+    local filteredCount = 0
+    
+    -- RemoteEvents
+    local eventCount = 0
+    for _, remote in ipairs(allRemotes.events) do
+        if filter == "" or remote.name:lower():find(filter:lower()) then
+            eventCount = eventCount + 1
+            local item = Instance.new("Frame")
+            item.Size = UDim2.new(1, -2, 0, itemHeight)
+            item.Position = UDim2.new(0, 2, 0, yPos)
+            item.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
+            item.BorderSizePixel = 0
+            item.Parent = scrollFrame
+            
+            local text = Instance.new("TextLabel")
+            text.Size = UDim2.new(1, -10, 1, 0)
+            text.Position = UDim2.new(0, 5, 0, 0)
+            text.BackgroundTransparency = 1
+            text.TextColor3 = Color3.fromRGB(150, 220, 255)
+            text.TextSize = 10
+            text.Font = Enum.Font.Courier
+            text.TextWrapped = true
+            text.TextXAlignment = Enum.TextXAlignment.Left
+            text.TextYAlignment = Enum.TextYAlignment.Top
+            text.Text = "📤 " .. remote.name .. "\n📍 " .. remote.path .. "\n🔗 FireServer(...)"
+            text.Parent = item
+            
+            yPos = yPos + itemHeight
+            filteredCount = filteredCount + 1
+        end
+    end
+    
+    -- RemoteFunctions
+    for _, func in ipairs(allRemotes.functions) do
+        if filter == "" or func.name:lower():find(filter:lower()) then
+            local item = Instance.new("Frame")
+            item.Size = UDim2.new(1, -2, 0, itemHeight)
+            item.Position = UDim2.new(0, 2, 0, yPos)
+            item.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+            item.BorderSizePixel = 0
+            item.Parent = scrollFrame
+            
+            local text = Instance.new("TextLabel")
+            text.Size = UDim2.new(1, -10, 1, 0)
+            text.Position = UDim2.new(0, 5, 0, 0)
+            text.BackgroundTransparency = 1
+            text.TextColor3 = Color3.fromRGB(200, 180, 255)
+            text.TextSize = 10
+            text.Font = Enum.Font.Courier
+            text.TextWrapped = true
+            text.TextXAlignment = Enum.TextXAlignment.Left
+            text.TextYAlignment = Enum.TextYAlignment.Top
+            text.Text = "📞 " .. func.name .. "\n📍 " .. func.path .. "\n🔗 InvokeServer(...)"
+            text.Parent = item
+            
+            yPos = yPos + itemHeight
+            filteredCount = filteredCount + 1
+        end
+    end
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPos)
+    return filteredCount
+end
+
+renderContent("")
+
+searchBox.Changed:Connect(function(prop)
+    if prop == "Text" then
+        renderContent(searchBox.Text)
+    end
+end)
+
+-- === BUTTONS ===
+local buttonY = 1
+local buttonHeight = 35
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0.24, -1, 0, buttonHeight)
+closeBtn.Position = UDim2.new(0.74, 2, buttonY, -37)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 11
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "❌ Close"
+closeBtn.Parent = bg
+
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+local jsonBtn = Instance.new("TextButton")
+jsonBtn.Size = UDim2.new(0.24, -1, 0, buttonHeight)
+jsonBtn.Position = UDim2.new(0.49, 2, buttonY, -37)
+jsonBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 180)
+jsonBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+jsonBtn.TextSize = 11
+jsonBtn.Font = Enum.Font.GothamBold
+jsonBtn.Text = "📄 JSON"
+jsonBtn.Parent = bg
+
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0.24, -1, 0, buttonHeight)
+copyBtn.Position = UDim2.new(0.24, 2, buttonY, -37)
+copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyBtn.TextSize = 11
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.Text = "✅ Copy"
+copyBtn.Parent = bg
+
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(0.24, -1, 0, buttonHeight)
+refreshBtn.Position = UDim2.new(0, 2, buttonY, -37)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshBtn.TextSize = 11
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.Text = "🔄 Rescan"
+refreshBtn.Parent = bg
+
+-- === EXPORT FUNCTIONS ===
+local function generateTextReport()
+    local report = "=== COMMUNICATION SCAN REPORT ===\n"
+    report = report .. "Scan Time: " .. scanTime .. "s\n"
+    report = report .. "RemoteEvents: " .. #allRemotes.events .. "\n"
+    report = report .. "RemoteFunctions: " .. #allRemotes.functions .. "\n"
+    report = report .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n\n"
+    
+    report = report .. "=== RemoteEvents ===\n"
+    for _, remote in ipairs(allRemotes.events) do
+        report = report .. "• " .. remote.name .. "\n"
+        report = report .. "  Path: " .. remote.path .. "\n"
+        report = report .. "  Parent: " .. remote.parent .. "\n"
+        report = report .. "  Call: remote:FireServer(...)\n\n"
+    end
+    
+    report = report .. "=== RemoteFunctions ===\n"
+    for _, func in ipairs(allRemotes.functions) do
+        report = report .. "• " .. func.name .. "\n"
+        report = report .. "  Path: " .. func.path .. "\n"
+        report = report .. "  Parent: " .. func.parent .. "\n"
+        report = report .. "  Call: remote:InvokeServer(...)\n\n"
+    end
+    
+    report = report .. "=== SECURITY REALITY ===\n"
+    report = report .. "✅ For game developers: use for internal testing\n"
+    report = report .. "❌ For external automation: impossible\n"
+    report = report .. "✓ Server validates ALL parameters\n"
+    report = report .. "✓ Most calls are checked against player state\n"
+    
+    return report
+end
+
+local function generateJSON()
+    local json = "{\n"
+    json = json .. '  "meta": {\n'
+    json = json .. '    "scanTime": ' .. scanTime .. ',\n'
+    json = json .. '    "timestamp": "' .. os.date("%Y-%m-%d %H:%M:%S") .. '",\n'
+    json = json .. '    "remoteEventCount": ' .. #allRemotes.events .. ',\n'
+    json = json .. '    "remoteFunctionCount": ' .. #allRemotes.functions .. '\n'
+    json = json .. '  },\n'
+    
+    json = json .. '  "remoteEvents": [\n'
+    for i, remote in ipairs(allRemotes.events) do
+        json = json .. '    {\n'
+        json = json .. '      "name": "' .. remote.name .. '",\n'
+        json = json .. '      "path": "' .. remote.path .. '",\n'
+        json = json .. '      "parent": "' .. remote.parent .. '",\n'
+        json = json .. '      "type": "RemoteEvent"\n'
+        json = json .. '    }' .. (i < #allRemotes.events and ',' or '') .. '\n'
+    end
+    json = json .. '  ],\n'
+    
+    json = json .. '  "remoteFunctions": [\n'
+    for i, func in ipairs(allRemotes.functions) do
+        json = json .. '    {\n'
+        json = json .. '      "name": "' .. func.name .. '",\n'
+        json = json .. '      "path": "' .. func.path .. '",\n'
+        json = json .. '      "parent": "' .. func.parent .. '",\n'
+        json = json .. '      "type": "RemoteFunction"\n'
+        json = json .. '    }' .. (i < #allRemotes.functions and ',' or '') .. '\n'
+    end
+    json = json .. '  ]\n'
+    json = json .. '}'
+    
+    return json
+end
+
+copyBtn.MouseButton1Click:Connect(function()
+    local report = generateTextReport()
+    pcall(function()
+        setclipboard(report)
+        copyBtn.Text = "✅ Copied!"
+        task.wait(2)
+        copyBtn.Text = "✅ Copy"
+    end)
+end)
+
+jsonBtn.MouseButton1Click:Connect(function()
+    local json = generateJSON()
+    pcall(function()
+        setclipboard(json)
+        jsonBtn.Text = "✅ Copied!"
+        task.wait(2)
+        jsonBtn.Text = "📄 JSON"
+    end)
+end)
+
+refreshBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+    task.wait(0.5)
+    loadstring(script.Source)()
+end)
+
+print("[SCANNER] ================================================================")
+print("[SCANNER] ✨ Tool loaded successfully!")
+print("[SCANNER]")
+print("[SCANNER] FEATURES:")
+print("[SCANNER]  🔎 Search bar - filter RemoteEvents/Functions by name")
+print("[SCANNER]  📄 Text export - formatted report with all details")
+print("[SCANNER]  📋 JSON export - machine-readable format for analysis")
+print("[SCANNER]  🔄 Rescan - reload the scan (useful if new events spawn)")
+print("[SCANNER]")
+print("[SCANNER] REMEMBER:")
+print("[SCANNER]  ✅ Use this for YOUR OWN game development")
+print("[SCANNER]  ❌ Don't use to bypass external game protections")
+print("[SCANNER] ================================================================")
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-il recommence un deuxième scanner complet.
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-Donc ton script fait :
+-- === SCAN COMPLET ===
+print("[SCANNER] 🔍 Scan en cours...\n")
 
-Scanner v2 ✅
-puis re-scanner ancien ❌
+local remotes = {}
+local functions = {}
+local remoteCount = 0
+local functionCount = 0
+local scanStartTime = tick()
 
-Ça peut créer :
-
-2 interfaces
-variables écrasées
-bugs
-
-➡️ Supprime toute la deuxième partie après le premier :
-
-print("[SCANNER] ================================================================")
-print("[SCANNER] ✨ Tool loaded successfully!")
-2) Ajouter getdescendants()
-
-Actuellement il descend seulement dans :
-
-Folder
-Model
-
-Mais certains jeux mettent des Remote dans d'autres objets.
-
-Plus simple :
-
-for _, child in pairs(parent:GetDescendants()) do
-
-Ça trouve plus de choses.
-
-3) Ajouter les événements qui apparaissent après le chargement
-
-Certains jeux créent des RemoteEvents après quelques secondes.
-
-Tu pourrais ajouter :
-
-bouton "Live Scan"
-surveillance avec ChildAdded
-
-Exemple :
-
-ReplicatedStorage.ChildAdded:Connect(function(obj)
-    if obj:IsA("RemoteEvent") then
-        print("Nouveau Remote:", obj.Name)
+local function scanForCommunication(parent, prefix)
+    prefix = prefix or ""
+    
+    for _, child in pairs(parent:GetChildren()) do
+        if child:IsA("RemoteEvent") then
+            remoteCount = remoteCount + 1
+            local fullPath = prefix .. child.Name
+            table.insert(remotes, {
+                name = child.Name,
+                path = fullPath,
+                parent = child.Parent.Name
+            })
+            print("[SCANNER] 📤 RemoteEvent: " .. fullPath)
+        elseif child:IsA("RemoteFunction") then
+            functionCount = functionCount + 1
+            local fullPath = prefix .. child.Name
+            table.insert(functions, {
+                name = child.Name,
+                path = fullPath,
+                parent = child.Parent.Name
+            })
+            print("[SCANNER] 📞 RemoteFunction: " .. fullPath)
+        end
+        
+        if child:IsA("Folder") then
+            scanForCommunication(child, prefix .. child.Name .. "/")
+        end
     end
+end
+
+print("[SCANNER] === ReplicatedStorage ===")
+scanForCommunication(ReplicatedStorage)
+
+print("\n[SCANNER] === Workspace (objets 3D) ===")
+pcall(function()
+    scanForCommunication(game.Workspace, "Workspace/")
 end)
-4) Ajouter une catégorie
 
-Au lieu d'une seule liste :
+local scanEndTime = tick()
+local scanTime = string.format("%.2f", scanEndTime - scanStartTime)
 
-📤 RemoteEvents
-   - Shop
-   - Trade
-   - Inventory
+print("\n[SCANNER] ================================================================")
+print("[SCANNER] ✅ Scan terminé en " .. scanTime .. "s")
+print("[SCANNER] 📤 RemoteEvents: " .. remoteCount)
+print("[SCANNER] 📞 RemoteFunctions: " .. functionCount)
+print("[SCANNER] ================================================================\n")
 
-📞 RemoteFunctions
-   - GetData
-   - LoadPlayer
+-- === ÉCRAN UI (Amélioré) ===
+local gui = Instance.new("ScreenGui")
+gui.Name = "ScannerScreen"
+gui.ResetOnSpawn = false
+gui.ZIndex = 9999
+gui.Parent = playerGui
 
-Plus facile à lire.
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(0.65, 0, 0.75, 0)
+bg.Position = UDim2.new(0.175, 0, 0.125, 0)
+bg.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+bg.BorderSizePixel = 2
+bg.BorderColor3 = Color3.fromRGB(100, 150, 255)
+bg.Parent = gui
 
-5) Ajouter le chemin complet Roblox
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 50)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(50, 80, 150)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 15
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "🔍 Communication Scanner - " .. remoteCount .. " Events | " .. functionCount .. " Functions"
+titleLabel.TextWrapped = true
+titleLabel.Parent = bg
 
-Au lieu de :
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(1, -4, 1, -110)
+textLabel.Position = UDim2.new(0, 2, 0, 52)
+textLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+textLabel.BorderSizePixel = 1
+textLabel.BorderColor3 = Color3.fromRGB(80, 120, 200)
+textLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+textLabel.TextSize = 9
+textLabel.Font = Enum.Font.Courier
+textLabel.TextWrapped = true
+textLabel.TextXAlignment = Enum.TextXAlignment.Left
+textLabel.TextYAlignment = Enum.TextYAlignment.Top
+textLabel.Padding = UDim.new(0, 8)
 
-Folder/Event
+local displayText = ""
 
-Afficher :
+if remoteCount == 0 and functionCount == 0 then
+    displayText = "❌ Aucun RemoteEvent ou RemoteFunction trouvé\n\nOu ils sont inaccessibles depuis le client"
+else
+    displayText = "=== RemoteEvents ===\n"
+    for i, remote in ipairs(remotes) do
+        if i <= 12 then
+            displayText = displayText .. "📤 " .. remote.name .. "\n"
+            displayText = displayText .. "   " .. remote.path .. "\n"
+        end
+    end
+    
+    if remoteCount > 12 then
+        displayText = displayText .. "\n... et " .. (remoteCount - 12) .. " RemoteEvents de plus"
+    end
+    
+    if functionCount > 0 then
+        displayText = displayText .. "\n\n=== RemoteFunctions ===\n"
+        for i, func in ipairs(functions) do
+            if i <= 8 then
+                displayText = displayText .. "📞 " .. func.name .. "\n"
+                displayText = displayText .. "   " .. func.path .. "\n"
+            end
+        end
+        
+        if functionCount > 8 then
+            displayText = displayText .. "\n... et " .. (functionCount - 8) .. " RemoteFunctions de plus"
+        end
+    end
+    
+    displayText = displayText .. "\n\n⏱️ Scan: " .. scanTime .. "s"
+end
 
-game.ReplicatedStorage.Modules.Trade.SendTrade
+textLabel.Text = displayText
+textLabel.Parent = bg
 
-C'est plus utile pour un développeur.
+-- === BOUTONS ===
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0.32, -2, 0, 40)
+closeBtn.Position = UDim2.new(0.68, 2, 1, -42)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 12
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "❌ Fermer"
+closeBtn.Parent = bg
 
-6) Corriger le bouton Rescan
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
 
-Cette ligne :
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0.32, -2, 0, 40)
+copyBtn.Position = UDim2.new(0.34, 2, 1, -42)
+copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyBtn.TextSize = 12
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.Text = "✅ Copier"
+copyBtn.Parent = bg
 
-loadstring(script.Source)()
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(0.32, -2, 0, 40)
+refreshBtn.Position = UDim2.new(0, 2, 1, -42)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshBtn.TextSize = 12
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.Text = "🔄 Rescan"
+refreshBtn.Parent = bg
 
-peut ne pas marcher dans beaucoup de contextes.
+-- === GÉNÉRER LE RAPPORT ===
+local function generateReport()
+    local report = "=== COMMUNICATION SCAN REPORT ===\n"
+    report = report .. "Scan Time: " .. scanTime .. "s\n"
+    report = report .. "RemoteEvents Found: " .. remoteCount .. "\n"
+    report = report .. "RemoteFunctions Found: " .. functionCount .. "\n\n"
+    
+    report = report .. "=== RemoteEvents ===\n"
+    for i, remote in ipairs(remotes) do
+        report = report .. "[" .. i .. "] " .. remote.name .. "\n"
+        report = report .. "    Path: " .. remote.path .. "\n"
+        report = report .. "    Parent: " .. remote.parent .. "\n"
+        report = report .. "    Call: remote:FireServer(...)\n\n"
+    end
+    
+    report = report .. "=== RemoteFunctions ===\n"
+    for i, func in ipairs(functions) do
+        report = report .. "[" .. i .. "] " .. func.name .. "\n"
+        report = report .. "    Path: " .. func.path .. "\n"
+        report = report .. "    Parent: " .. func.parent .. "\n"
+        report = report .. "    Call: remote:InvokeServer(...)\n\n"
+    end
+    
+    report = report .. "\n=== IMPORTANT SECURITY INFO ===\n"
+    report = report .. "• RemoteEvents/Functions can be called with FireServer/InvokeServer\n"
+    report = report .. "• BUT the server ALWAYS validates parameters\n"
+    report = report .. "• You MUST know exact parameter types and values\n"
+    report = report .. "• Most games refuse suspicious calls (anti-cheat/anti-bot)\n"
+    report = report .. "• Knowing the names is NOT enough to automate gameplay\n\n"
+    
+    report = report .. "=== USE CASES ===\n"
+    report = report .. "✅ If you develop this game: use this for internal testing\n"
+    report = report .. "✅ Understand client-server communication architecture\n"
+    report = report .. "❌ Bypass game protections\n"
+    report = report .. "❌ Automate external games\n"
+    
+    return report
+end
 
-Meilleur :
-faire une fonction startScanner() et la rappeler.
+copyBtn.MouseButton1Click:Connect(function()
+    local report = generateReport()
+    pcall(function()
+        setclipboard(report)
+        copyBtn.Text = "✅ Copié!"
+        task.wait(2)
+        copyBtn.Text = "✅ Copier"
+    end)
+end)
+
+refreshBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+    game:GetService("RunService").Heartbeat:Wait()
+    loadstring(script.Source)()
+end)
+
+print("\n[SCANNER] ================================================================")
+print("[SCANNER] 📋 USAGE:")
+print("[SCANNER]")
+print("[SCANNER] ✅ Development tool (if you create Roblox game):")
+print("[SCANNER]    - Understand your game's communication structure")
+print("[SCANNER]    - Test RemoteEvents in development")
+print("[SCANNER]    - Debug client-server interactions")
+print("[SCANNER]    - Generate reports for your team")
+print("[SCANNER]")
+print("[SCANNER] ❌ Does NOT allow:")
+print("[SCANNER]    - Automating external games")
+print("[SCANNER]    - Bypassing server validation")
+print("[SCANNER]    - Spoofing legitimate gameplay actions")
+print("[SCANNER]")
+print("[SCANNER] 🔒 Game Security Reality:")
+print("[SCANNER]    - Servers validate EVERYTHING")
+print("[SCANNER]    - RemoteEvents have security tokens")
+print("[SCANNER]    - Actions are checked against player state")
+print("[SCANNER]    - Suspicious patterns are detected")
+print("[SCANNER]")
+print("[SCANNER] 🎯 REAL SOLUTION:")
+print("[SCANNER]    → Create your own Roblox game")
+print("[SCANNER]    → Or request features from game creators")
+print("[SCANNER] ================================================================")
